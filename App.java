@@ -1,21 +1,12 @@
 import java.awt.*;
-import java.awt.event.*;
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import ui.*;
 
 public class App {
-    // Team Colors
-    private static final Color RAVENS_PURPLE = new Color(36, 23, 115);
-    private static final Color RAVENS_GOLD = new Color(158, 124, 12);
-    private static final Color RAVENS_BLACK = new Color(0, 0, 0);
-    private static final Color BG_COLOR = new Color(250, 250, 252);
-    private static final Color CARD_BG = Color.WHITE;
-    private static final Color DETAIL_BG = new Color(248, 248, 250);
-    private static final Color HOVER_COLOR = new Color(245, 243, 255);
-    
     // Data structure to hold roster information
     static class RosterEntry {
         String category;
@@ -30,7 +21,7 @@ public class App {
     }
     
     private static List<ExpandableCard> allCards = new ArrayList<>();
-    private static JTextField searchField;
+    private static HeaderPanel headerPanel;
     private static JPanel contentPanel;
 
     public static void main(String[] args) {
@@ -44,16 +35,24 @@ public class App {
 
         // Main container
         JPanel mainContainer = new JPanel(new BorderLayout());
-        mainContainer.setBackground(BG_COLOR);
+        mainContainer.setBackground(ColorScheme.BG_COLOR);
 
-        // Header
-        JPanel header = createHeader(frame);
-        mainContainer.add(header, BorderLayout.NORTH);
+        // Header with listeners
+        headerPanel = new HeaderPanel(
+            frame,
+            App::filterContent,           // Search listener
+            App::filterByCategory,         // Filter listener
+            new HeaderPanel.ControlButtonListener() {
+                public void onExpandAll() { toggleAll(true); }
+                public void onCollapseAll() { toggleAll(false); }
+            }
+        );
+        mainContainer.add(headerPanel, BorderLayout.NORTH);
 
         // Content panel with cards
         contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(BG_COLOR);
+        contentPanel.setBackground(ColorScheme.BG_COLOR);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
 
         // Load roster data from CSV
@@ -71,142 +70,12 @@ public class App {
         frame.setVisible(true);
         
         // Show welcome dialog AFTER frame is visible
-        SwingUtilities.invokeLater(() -> showWelcomeDialog(frame));
-    }
-
-    private static JPanel createHeader(JFrame parentFrame) {
-        JPanel header = new JPanel();
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        header.setBackground(RAVENS_PURPLE);
-        header.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
-
-        // Title
-        JLabel title = new JLabel("BALTIMORE RAVENS");
-        title.setFont(new Font("Arial", Font.BOLD, 32));
-        title.setForeground(RAVENS_GOLD);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel subtitle = new JLabel("2024-25 Roster & Coaching Staff");
-        subtitle.setFont(new Font("Arial", Font.PLAIN, 16));
-        subtitle.setForeground(Color.WHITE);
-        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        subtitle.setBorder(BorderFactory.createEmptyBorder(5, 0, 15, 0));
-
-        // Search and controls
-        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        controls.setBackground(RAVENS_PURPLE);
-        controls.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        searchField = new JTextField(25);
-        searchField.setFont(new Font("Arial", Font.PLAIN, 14));
-        searchField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(RAVENS_GOLD, 1),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        searchField.addKeyListener(new KeyAdapter() {
-            public void keyReleased(KeyEvent e) {
-                filterContent(searchField.getText());
-            }
-        });
-
-        JButton expandAll = createControlButton("Expand All");
-        expandAll.addActionListener(e -> toggleAll(true));
-
-        JButton collapseAll = createControlButton("Collapse All");
-        collapseAll.addActionListener(e -> toggleAll(false));
-
-        JButton aboutBtn = createControlButton("About");
-        aboutBtn.addActionListener(e -> showAboutDialog(parentFrame));
-
-        JButton helpBtn = createControlButton("Help");
-        helpBtn.addActionListener(e -> showHelpDialog(parentFrame));
-
-        // Filter dropdown
-        String[] filterOptions = {
-            "All Positions",
-            "QB - Quarterbacks",
-            "RB - Running Backs",
-            "WR - Wide Receivers",
-            "TE - Tight Ends",
-            "OL - Offensive Line",
-            "DL - Defensive Line",
-            "LB - Linebackers",
-            "DB - Defensive Backs",
-            "ST - Special Teams",
-            "Coaches"
-        };
-        
-        JComboBox<String> filterDropdown = new JComboBox<>(filterOptions);
-        filterDropdown.setFont(new Font("Arial", Font.PLAIN, 13));
-        filterDropdown.setBackground(Color.WHITE);
-        filterDropdown.setForeground(RAVENS_BLACK);
-        filterDropdown.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        filterDropdown.setMaximumRowCount(11);
-        
-        filterDropdown.addActionListener(e -> {
-            String selected = (String) filterDropdown.getSelectedItem();
-            String filter = "";
-            
-            if (selected.startsWith("QB")) filter = "QB";
-            else if (selected.startsWith("RB")) filter = "RB";
-            else if (selected.startsWith("WR")) filter = "WR";
-            else if (selected.startsWith("TE")) filter = "TE";
-            else if (selected.startsWith("OL")) filter = "OL";
-            else if (selected.startsWith("DL")) filter = "DL";
-            else if (selected.startsWith("LB")) filter = "LB";
-            else if (selected.startsWith("DB")) filter = "DB";
-            else if (selected.startsWith("ST")) filter = "ST";
-            else if (selected.equals("Coaches")) filter = "Coach";
-            
-            filterByCategory(filter);
-        });
-
-        controls.add(new JLabel("Search: ") {{
-            setForeground(Color.WHITE);
-            setFont(new Font("Arial", Font.PLAIN, 14));
-        }});
-        controls.add(searchField);
-        controls.add(new JLabel("  Filter: ") {{
-            setForeground(Color.WHITE);
-            setFont(new Font("Arial", Font.PLAIN, 14));
-        }});
-        controls.add(filterDropdown);
-        controls.add(expandAll);
-        controls.add(collapseAll);
-        controls.add(aboutBtn);
-        controls.add(helpBtn);
-
-        header.add(title);
-        header.add(subtitle);
-        header.add(controls);
-
-        return header;
-    }
-
-    private static JButton createControlButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Arial", Font.PLAIN, 13));
-        btn.setBackground(RAVENS_GOLD);
-        btn.setForeground(RAVENS_BLACK);
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(RAVENS_GOLD.brighter());
-            }
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(RAVENS_GOLD);
-            }
-        });
-        
-        return btn;
+        SwingUtilities.invokeLater(() -> DialogHelper.showWelcomeDialog(frame));
     }
 
     // Filter cards by category/position and move to top
     private static void filterByCategory(String category) {
-        searchField.setText(""); // Clear search field
+        headerPanel.clearSearchField();
         String lowerCategory = category.toLowerCase().trim();
         
         // If "All Positions" selected, restore original content
@@ -260,7 +129,7 @@ public class App {
         else if (lowerCategory.equals("coach")) filterTitle = "COACHING STAFF";
         
         if (!filterTitle.isEmpty() && !matchingCards.isEmpty()) {
-            addSection(contentPanel, filterTitle, RAVENS_GOLD);
+            addSection(contentPanel, filterTitle, ColorScheme.RAVENS_GOLD);
         }
         
         // Add matching cards first
@@ -273,7 +142,7 @@ public class App {
         if (!matchingCards.isEmpty() && !nonMatchingCards.isEmpty()) {
             JPanel separator = new JPanel();
             separator.setLayout(new BorderLayout());
-            separator.setBackground(BG_COLOR);
+            separator.setBackground(ColorScheme.BG_COLOR);
             separator.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             separator.setAlignmentX(Component.LEFT_ALIGNMENT);
             separator.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
@@ -410,7 +279,7 @@ public class App {
             
             // Add major section header if it's new
             if (!majorSection.equals(lastMajorSection)) {
-                addSection(panel, majorSection.toUpperCase(), RAVENS_GOLD);
+                addSection(panel, majorSection.toUpperCase(), ColorScheme.RAVENS_GOLD);
                 lastMajorSection = majorSection;
             }
             
@@ -454,7 +323,7 @@ public class App {
     private static void addSubsection(JPanel panel, String title) {
         JLabel label = new JLabel(title);
         label.setFont(new Font("Arial", Font.BOLD, 18));
-        label.setForeground(RAVENS_PURPLE);
+        label.setForeground(ColorScheme.RAVENS_PURPLE);
         label.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(label);
@@ -483,192 +352,6 @@ public class App {
             if (card.isVisible()) {
                 card.setExpanded(expand);
             }
-        }
-    }
-
-    // JOptionPane dialogs
-    private static void showWelcomeDialog(JFrame parent) {
-        JOptionPane.showMessageDialog(parent,
-            "Welcome to the Baltimore Ravens Roster App!\n\n" +
-            "Browse the complete 2024-25 roster including:\n" +
-            "• Players by position\n" +
-            "• Coaching staff\n" +
-            "• Front office\n" +
-            "• Medical & performance staff\n\n" +
-            "Use the search feature to find specific people quickly!",
-            "Welcome to Ravens Roster",
-            JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private static void showAboutDialog(JFrame parent) {
-        String message = "Baltimore Ravens Roster Application\n" +
-                        "Version 2.0\n\n" +
-                        "Complete roster and staff directory for the 2024-25 season.\n\n" +
-                        "Features:\n" +
-                        "• CSV-based data loading\n" +
-                        "• Searchable player and staff database\n" +
-                        "• Expandable detail cards\n" +
-                        "• Position-based organization\n" +
-                        "• Team colors and branding\n\n" +
-                        "Go Ravens!";
-        
-        JOptionPane.showMessageDialog(parent, message, "About", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private static void showHelpDialog(JFrame parent) {
-        String[] options = {"Search Help", "Navigation Help", "Close"};
-        int choice = JOptionPane.showOptionDialog(parent,
-            "What do you need help with?",
-            "Help Menu",
-            JOptionPane.YES_NO_CANCEL_OPTION,
-            JOptionPane.QUESTION_MESSAGE,
-            null,
-            options,
-            options[0]);
-
-        if (choice == 0) {
-            JOptionPane.showMessageDialog(parent,
-                "SEARCH HELP\n\n" +
-                "• Type in the search box to filter results\n" +
-                "• Search by name, position, or role\n" +
-                "• Examples: 'Lamar', 'QB', 'Coach', 'Medical'\n" +
-                "• Clear the search box to show all entries",
-                "Search Help",
-                JOptionPane.INFORMATION_MESSAGE);
-        } else if (choice == 1) {
-            JOptionPane.showMessageDialog(parent,
-                "NAVIGATION HELP\n\n" +
-                "• Click any card to expand and view details\n" +
-                "• Click again to collapse\n" +
-                "• Double-click for quick info popup\n" +
-                "• Use 'Expand All' to open all visible cards\n" +
-                "• Use 'Collapse All' to close all cards\n" +
-                "• Scroll to browse all sections",
-                "Navigation Help",
-                JOptionPane.INFORMATION_MESSAGE);
-        }
-    }
-
-    // Custom expandable card component
-    static class ExpandableCard extends JPanel {
-        private JPanel detailPanel;
-        private JLabel arrowLabel;
-        private JPanel headerPanel;
-        private boolean expanded = false;
-        private int width = 500;
-        String searchText;
-
-        public ExpandableCard(String name, String subtitle, String details, boolean isPlayer) {
-            this.searchText = name + " " + subtitle + " " + details;
-            
-            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-            setBackground(CARD_BG);
-            setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 230, 235), 1),
-                BorderFactory.createEmptyBorder(0, 0, 0, 0)
-            ));
-            setAlignmentX(Component.LEFT_ALIGNMENT);
-            setMaximumSize(new Dimension(width, 100));
-            setPreferredSize(new Dimension(width, 70));
-
-            // Header (clickable)
-            headerPanel = new JPanel(new BorderLayout());
-            headerPanel.setBackground(CARD_BG);
-            headerPanel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
-            headerPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            headerPanel.setPreferredSize(new Dimension(width, 70));
-            headerPanel.setMinimumSize(new Dimension(0, 70));
-
-            JPanel leftPanel = new JPanel();
-            leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-            leftPanel.setBackground(CARD_BG);
-
-            JLabel nameLabel = new JLabel(name);
-            nameLabel.setFont(new Font("Arial", Font.BOLD, 15));
-            nameLabel.setForeground(RAVENS_BLACK);
-            
-            JLabel subtitleLabel = new JLabel(subtitle);
-            subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 13));
-            subtitleLabel.setForeground(new Color(100, 100, 120));
-            subtitleLabel.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
-
-            leftPanel.add(nameLabel);
-            if (!subtitle.isEmpty()) {
-                leftPanel.add(subtitleLabel);
-            }
-
-            arrowLabel = new JLabel("▼");
-            arrowLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-            arrowLabel.setForeground(RAVENS_GOLD);
-
-            headerPanel.add(leftPanel, BorderLayout.CENTER);
-            headerPanel.add(arrowLabel, BorderLayout.EAST);
-
-            // Detail panel
-            detailPanel = new JPanel(new BorderLayout());
-            detailPanel.setBackground(DETAIL_BG);
-            detailPanel.setBorder(BorderFactory.createEmptyBorder(15, 18, 18, 18));
-            detailPanel.setVisible(false);
-            detailPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-            JTextArea detailText = new JTextArea(details);
-            detailText.setEditable(false);
-            detailText.setLineWrap(true);
-            detailText.setWrapStyleWord(true);
-            detailText.setBackground(DETAIL_BG);
-            detailText.setFont(new Font("Arial", Font.PLAIN, 13));
-            detailText.setForeground(new Color(60, 60, 70));
-
-            detailPanel.add(detailText, BorderLayout.CENTER);
-
-            // Click to expand/collapse
-            headerPanel.addMouseListener(new MouseAdapter() {
-                public void mouseEntered(MouseEvent e) {
-                    if (!expanded) headerPanel.setBackground(HOVER_COLOR);
-                    leftPanel.setBackground(HOVER_COLOR);
-                }
-                public void mouseExited(MouseEvent e) {
-                    if (!expanded) {
-                        headerPanel.setBackground(CARD_BG);
-                        leftPanel.setBackground(CARD_BG);
-                    }
-                }
-                public void mouseClicked(MouseEvent e) {
-                    toggleExpand();
-                }
-            });
-
-            add(headerPanel);
-            add(detailPanel);
-        }
-
-        private void toggleExpand() {
-            setExpanded(!expanded);
-        }
-
-        public void setExpanded(boolean expand) {
-            this.expanded = expand;
-            detailPanel.setVisible(expand);
-            arrowLabel.setText(expand ? "▲" : "▼");
-            
-            if (expand) {
-                setMaximumSize(new Dimension(width, Integer.MAX_VALUE));
-                setPreferredSize(null);
-            } else {
-                setMaximumSize(new Dimension(width, 100));
-                setPreferredSize(new Dimension(width, 70));
-            }
-            
-            revalidate();
-            repaint();
-        }
-
-        private void showQuickInfo(String name, String subtitle, String details) {
-            String title = subtitle.isEmpty() ? name : name + " - " + subtitle;
-            JOptionPane.showMessageDialog(null,
-                details,
-                title,
-                JOptionPane.INFORMATION_MESSAGE);
         }
     }
 }
