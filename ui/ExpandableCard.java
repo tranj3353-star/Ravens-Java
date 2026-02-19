@@ -19,6 +19,7 @@ public class ExpandableCard extends JPanel {
 
     private boolean expanded = false;
     public String searchText;
+    private JTextArea detailText;
 
     private Timer animationTimer;
     private int animationHeight = 0;
@@ -29,100 +30,95 @@ public class ExpandableCard extends JPanel {
 
     public ExpandableCard(String name, String subtitle, String details, boolean isPlayer) {
 
-        this.searchText = name + " " + subtitle + " " + details;
+    this.searchText = name + " " + subtitle + " " + details;
 
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBackground(CARD_BG);
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 230, 235), 1),
-                BorderFactory.createEmptyBorder(0, 0, 0, 0)
-        ));
-        setAlignmentX(Component.LEFT_ALIGNMENT);
+    setLayout(new BorderLayout());  // Changed from BoxLayout
+    setBackground(CARD_BG);
+    setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(230, 230, 235), 1),
+            BorderFactory.createEmptyBorder(0, 0, 0, 0)
+    ));
+    setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // ===== HEADER =====
-        headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(CARD_BG);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
-        headerPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+    // ===== HEADER =====
+    headerPanel = new JPanel(new BorderLayout());
+    headerPanel.setBackground(CARD_BG);
+    headerPanel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
+    headerPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JPanel leftPanel = new JPanel();
-        leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
-        leftPanel.setBackground(CARD_BG);
+    JPanel leftPanel = new JPanel();
+    leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+    leftPanel.setBackground(CARD_BG);
 
-        JLabel nameLabel = new JLabel(name);
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 15));
-        nameLabel.setForeground(RAVENS_BLACK);
+    JLabel nameLabel = new JLabel(name);
+    nameLabel.setFont(new Font("Arial", Font.BOLD, 15));
+    nameLabel.setForeground(RAVENS_BLACK);
 
-        JLabel subtitleLabel = new JLabel(subtitle);
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 13));
-        subtitleLabel.setForeground(new Color(100, 100, 120));
-        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+    JLabel subtitleLabel = new JLabel(subtitle);
+    subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 13));
+    subtitleLabel.setForeground(new Color(100, 100, 120));
+    subtitleLabel.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
 
-        leftPanel.add(nameLabel);
-        if (!subtitle.isEmpty()) {
-            leftPanel.add(subtitleLabel);
+    leftPanel.add(nameLabel);
+    if (!subtitle.isEmpty()) {
+        leftPanel.add(subtitleLabel);
+    }
+
+    arrowLabel = new JLabel("▼");
+    arrowLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+    arrowLabel.setForeground(RAVENS_GOLD);
+
+    headerPanel.add(leftPanel, BorderLayout.CENTER);
+    headerPanel.add(arrowLabel, BorderLayout.EAST);
+
+    // ===== DETAIL PANEL =====
+    detailPanel = new JPanel(new BorderLayout());
+    detailPanel.setBackground(DETAIL_BG);
+    detailPanel.setBorder(BorderFactory.createEmptyBorder(15, 18, 18, 18));
+
+    detailText = new JTextArea(details);
+    detailText.setEditable(false);
+    detailText.setLineWrap(true);
+    detailText.setWrapStyleWord(true);
+    detailText.setBackground(DETAIL_BG);
+    detailText.setFont(new Font("Arial", Font.PLAIN, 13));
+    detailText.setForeground(new Color(60, 60, 70));
+
+    detailPanel.add(detailText, BorderLayout.CENTER);  // CENTER fills all available space
+
+    // Collapse initially
+    detailPanel.setPreferredSize(new Dimension(0, 0));
+    detailPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 0));
+    detailPanel.setMinimumSize(new Dimension(0, 0));
+
+    // ===== CLICK LISTENER =====
+    headerPanel.addMouseListener(new MouseAdapter() {
+
+        @Override
+        public void mouseEntered(MouseEvent e) {
+            if (!expanded) {
+                headerPanel.setBackground(HOVER_COLOR);
+                leftPanel.setBackground(HOVER_COLOR);
+            }
         }
 
-        arrowLabel = new JLabel("▼");
-        arrowLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        arrowLabel.setForeground(RAVENS_GOLD);
-
-        headerPanel.add(leftPanel, BorderLayout.CENTER);
-        headerPanel.add(arrowLabel, BorderLayout.EAST);
-
-        // ===== DETAIL PANEL =====
-        detailPanel = new JPanel(new GridLayout(1, 1));
-        detailPanel.setBackground(DETAIL_BG);
-        detailPanel.setBorder(BorderFactory.createEmptyBorder(15, 18, 18, 18));
-        detailPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JTextArea detailText = new JTextArea(details);
-        detailText.setEditable(false);
-        detailText.setLineWrap(true);
-        detailText.setWrapStyleWord(true);
-        detailText.setBackground(DETAIL_BG);
-        detailText.setFont(new Font("Arial", Font.PLAIN, 13));
-        detailText.setForeground(new Color(60, 60, 70));
-
-        detailPanel.add(detailText);
-
-        // Calculate natural height ONCE
-        detailPanel.setPreferredSize(null);
-        fullDetailHeight = detailPanel.getPreferredSize().height;
-
-        // Collapse initially
-        detailPanel.setPreferredSize(new Dimension(0, 0));
-        detailPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 0));
-        detailPanel.setMinimumSize(new Dimension(0, 0));
-
-        // ===== CLICK LISTENER =====
-        headerPanel.addMouseListener(new MouseAdapter() {
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                if (!expanded) {
-                    headerPanel.setBackground(HOVER_COLOR);
-                    leftPanel.setBackground(HOVER_COLOR);
-                }
+        @Override
+        public void mouseExited(MouseEvent e) {
+            if (!expanded) {
+                headerPanel.setBackground(CARD_BG);
+                leftPanel.setBackground(CARD_BG);
             }
+        }
 
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (!expanded) {
-                    headerPanel.setBackground(CARD_BG);
-                    leftPanel.setBackground(CARD_BG);
-                }
-            }
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            toggleExpand();
+        }
+    });
 
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                toggleExpand();
-            }
-        });
-
-        add(headerPanel);
-        add(detailPanel);
-    }
+    add(headerPanel, BorderLayout.NORTH);   // NORTH keeps header at top, natural height
+    add(detailPanel, BorderLayout.CENTER);  // CENTER stretches to fill width automatically
+}
 
     private void toggleExpand() {
         setExpanded(!expanded);
@@ -130,8 +126,16 @@ public class ExpandableCard extends JPanel {
 
     public void setExpanded(boolean expand) {
 
+        
         if (animationTimer != null && animationTimer.isRunning()) {
             animationTimer.stop();
+        }
+
+        // Calculate real height now that we have actual width
+        if (expand && fullDetailHeight == 0) {
+            int availableWidth = getWidth() - 36; // account for left+right border padding
+            detailText.setSize(new Dimension(availableWidth, Short.MAX_VALUE));
+            fullDetailHeight = detailText.getPreferredSize().height + 33; // +33 for panel padding
         }
 
         this.expanded = expand;
@@ -150,13 +154,15 @@ public class ExpandableCard extends JPanel {
 
                 
             detailPanel.setPreferredSize(
-                    new Dimension(detailPanel.getPreferredSize().width, animationHeight)
+                    new Dimension(getWidth(), animationHeight)
             );
+
             detailPanel.setMaximumSize(
-                    new Dimension(Integer.MAX_VALUE, animationHeight)
+                    new Dimension(Short.MAX_VALUE, animationHeight)
             );
 
             revalidate();
+            repaint();
 
             if (animationHeight == targetHeight) {
                 animationTimer.stop();

@@ -42,7 +42,15 @@ public class App {
         mainContainer.add(headerPanel, BorderLayout.NORTH);
 
         // Content panel with cards
-        contentPanel = new JPanel();
+        contentPanel = new JPanel() {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                d.width = getParent() != null ? getParent().getWidth() : d.width;
+                return d;
+            }
+        };
+
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setBackground(ColorScheme.BG_COLOR);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
@@ -236,6 +244,7 @@ public class App {
 
     private static void addCard(JPanel panel, String name, String subtitle, String details, boolean isPlayer) {
         ExpandableCard card = new ExpandableCard(name, subtitle, details, isPlayer);
+
         allCards.add(card);
         panel.add(card);
         panel.add(Box.createRigidArea(new Dimension(0, 8)));
